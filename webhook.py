@@ -1,56 +1,27 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 import requests
 
 app = Flask(__name__)
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    req_data = request.get_json()
-    tag = req_data.get('fulfillmentInfo', {}).get('tag')
+@app.route('/get-public-data', methods=['GET'])
+def get_public_data():
+    try:
+        # Replace with your desired public URL
+        public_url = "https://www.incometax.gov.in/iec/foportal/"
+        response = requests.get(public_url)
+        response.raise_for_status()  # Raises error for 4xx/5xx
 
-    if tag == 'get_efilling':
-        try:
-            # Call the public weather API
-            efilling_res = requests.get('https://www.incometax.gov.in/iec/foportal/')
-            efilling_text = efilling_res.text.strip()
+        data = response.json()
+        return jsonify({
+            "status": "success",
+            "data": data
+        })
 
-            return jsonify({
-                "fulfillment_response": {
-                    "messages": [
-                        {
-                            "text": {
-                                "text": [f"Here's the efilling info: {efilling_text}"]
-                            }
-                        }
-                    ]
-                }
-            })
-        except Exception as e:
-            return jsonify({
-                "fulfillment_response": {
-                    "messages": [
-                        {
-                            "text": {
-                                "text": ["Sorry, couldn't get the efiiling information."]
-                            }
-                        }
-                    ]
-                }
-            })
-
-    # Default response for unknown tags
-    return jsonify({
-        "fulfillment_response": {
-            "messages": [
-                {
-                    "text": {
-                        "text": ["Sorry, I couldn't handle that request."]
-                    }
-                }
-            ]
-        }
-    })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 if __name__ == '__main__':
-    app.run(port=8080, debug=True)
-
+    app.run(port=8080)
