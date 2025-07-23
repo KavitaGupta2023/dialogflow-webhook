@@ -1,27 +1,58 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
 import requests
 
 app = Flask(__name__)
 
-@app.route('/get-public-data', methods=['GET'])
-def get_public_data():
-    try:
-        # Replace with your desired public URL
-        public_url = "https://www.incometax.gov.in/iec/foportal/"
-        response = requests.get(public_url)
-        response.raise_for_status()  # Raises error for 4xx/5xx
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    req_data = request.get_json()
+    tag = req_data.get("fulfillmentInfo", {}).get("tag", "")
 
-        data = response.json()
-        return jsonify({
-            "status": "success",
-            "data": data
-        })
+    if tag == "get_raw_content":
+        try:
+            # Public URL (can be JSON, HTML, or text)
+            public_url = "https://www.incometax.gov.in/iec/foportal/"  # Or any other URL
+            response = requests.get(public_url)
+            content = response.text.strip()
 
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+            # Return the content directly in chatbot message
+            return jsonify({
+                "fulfillment_response": {
+                    "messages": [
+                        {
+                            "text": {
+                                "text": [f"Here's the response:\n{content}"]
+                            }
+                        }
+                    ]
+                }
+            })
+
+        except Exception as e:
+            return jsonify({
+                "fulfillment_response": {
+                    "messages": [
+                        {
+                            "text": {
+                                "text": ["Error fetching data."]
+                            }
+                        }
+                    ]
+                }
+            }), 500
+
+    # Default response if tag doesn't match
+    return jsonify({
+        "fulfillment_response": {
+            "messages": [
+                {
+                    "text": {
+                        "text": ["No matching webhook tag."]
+                    }
+                }
+            ]
+        }
+    })
 
 if __name__ == '__main__':
     app.run(port=8080)
